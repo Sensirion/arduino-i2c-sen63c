@@ -3,7 +3,7 @@
  *
  * Generator:     sensirion-driver-generator 1.1.2
  * Product:       sen63c
- * Model-Version: 1.1.0
+ * Model-Version: 1.2.0
  */
 /*
  * Copyright (c) 2025, Sensirion AG
@@ -62,8 +62,10 @@ typedef enum {
     SEN63C_SET_SENSOR_ALTITUDE_CMD_ID = 0x6736,
     SEN63C_GET_SENSOR_ALTITUDE_CMD_ID = 0x6736,
     SEN63C_ACTIVATE_SHT_HEATER_CMD_ID = 0x6765,
+    SEN63C_GET_SHT_HEATER_MEASUREMENTS_CMD_ID = 0x6790,
     SEN63C_GET_PRODUCT_NAME_CMD_ID = 0xd014,
     SEN63C_GET_SERIAL_NUMBER_CMD_ID = 0xd033,
+    SEN63C_GET_VERSION_CMD_ID = 0xd100,
     SEN63C_READ_DEVICE_STATUS_CMD_ID = 0xd206,
     SEN63C_READ_AND_CLEAR_DEVICE_STATUS_CMD_ID = 0xd210,
     SEN63C_DEVICE_RESET_CMD_ID = 0xd304,
@@ -242,8 +244,8 @@ class SensirionI2cSen63c {
      * PM4.0 [particles/cm³] = value / 10 *Note: If this value is unknown,
      * 0xFFFF is returned.*
      * @param[out] numberConcentrationPm10p0 Value is scaled with factor 10:
-     * PM10.0 [particles/cm³] = value / 10 *Note: If this value is unknown,
-     * 0xFFFF is returned.*
+     * PM10.0 [particles/cm³] = value / 10
+     *   * field:
      *
      * @return error_code 0 on success, an error code otherwise.
      */
@@ -550,15 +552,39 @@ class SensirionI2cSen63c {
      *
      * This command allows to use the inbuilt heater in SHT sensor to reverse
      * creep at high humidity. This command activates the SHT sensor heater with
-     * 200mW for 1s. The heater is then automatically deactivated again. Wait at
-     * least 20s after this command before starting a measurement to get
-     * coherent temperature values (heating consequence to disappear).
+     * 200mW for 1s. The heater is then automatically deactivated again. The
+     * "get_sht_heater_measurements" command can be used to check if the heater
+     * has finished. Wait at least 20s after this command before starting a
+     * measurement to get coherent temperature values (heating consequence to
+     * disappear).
      *
      * @note This command is only available in idle mode.
      *
      * @return error_code 0 on success, an error code otherwise.
      */
     int16_t activateShtHeater();
+
+    /**
+     * @brief Get the measurement values when the SHT sensor heating is
+     * finished.
+     *
+     * Get the measured values when the SHT sensor heating is triggerd. If the
+     * heating is not finished, the returned humidity and temperature values are
+     * 0x7FFF.
+     *
+     * @param[out] humidity Value is scaled with factor 100: RH [%] = value /
+     * 100 *Note: If this value is not available, 0x7FFF is returned.*
+     * @param[out] temperature Value is scaled with factor 200: T [°C] = value /
+     * 200 *Note: If this value is not available, 0x7FFF is returned.*
+     *
+     * @note This command is only availble in idle mode. This command must be
+     * used after the "activate_sht_heater" command. The
+     * get_sht_heater_measurements command can be queried every 0.05s to get the
+     * measurements.
+     *
+     * @return error_code 0 on success, an error code otherwise.
+     */
+    int16_t getShtHeaterMeasurements(int16_t& humidity, int16_t& temperature);
 
     /**
      * @brief getProductName
@@ -583,6 +609,19 @@ class SensirionI2cSen63c {
      * @return error_code 0 on success, an error code otherwise.
      */
     int16_t getSerialNumber(int8_t serialNumber[], uint16_t serialNumberSize);
+
+    /**
+     * @brief getVersion
+     *
+     * Gets the version information for the hardware, firmware and communication
+     * protocol.
+     *
+     * @param[out] firmwareMajor Firmware major version number.
+     * @param[out] firmwareMinor Firmware minor version number.
+     *
+     * @return error_code 0 on success, an error code otherwise.
+     */
+    int16_t getVersion(uint8_t& firmwareMajor, uint8_t& firmwareMinor);
 
     /**
      * @brief readDeviceStatus
